@@ -67,7 +67,7 @@ except ImportError:
 # ----------------- Global constants -------------------------------------------
 # Kasey: These are only relevent for few-element field plots
 LAT_LON_DIFF_FACTOR = 1.333 
-MIN_LON_DIFF = 0.4   # 1 corresponds to ~ 100km at lat,lon = (40.35, -124.85)
+MIN_LON_DIFF = 0.15   # 1 corresponds to ~ 100km at lat,lon = (40.35, -124.85)
 MIN_LAT_DIFF = MIN_LON_DIFF/LAT_LON_DIFF_FACTOR   # 0.8 corresponds to ~ 100km at lat,lon = (40.35, -124.85)
 #MIN_FIT_MAG  = 5.0     # lower end o08 f magnitude for fitting freq_mag plot with b=1 curve
 
@@ -1629,7 +1629,7 @@ class FieldPlotter:
             elif self.field_type == 'geoid':
                 cbar_max = 0.00015
             elif self.field_type == 'coulomb':
-                cbar_max = 1e5
+                cbar_max = 1e4
             
         if (self.field_type == 'gravity' or self.field_type == 'dilat_gravity' or self.field_type == 'potential' or 
              self.field_type == 'geoid'  or self.field_type == 'satellite_gravity' or self.field_type == 'coulomb'):

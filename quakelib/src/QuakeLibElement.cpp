@@ -552,7 +552,7 @@ quakelib::FloatList quakelib::SlipMap::coulomb_change(const VectorList &points, 
 			y = points[point_id][1];
 
 			//if (pow(x-event_center()[0], 2) + pow(y-event_center()[1], 2) > pow( event_radius() * cutoff ,2) ) {
-			// Gotta figure the cutoff for gravity changes out
+			// Gotta figure the cutoff for CFF changes out
 
 			if (sqrt(pow((x - (xp0 + xp3) / 2.0), 2) + pow((y - (yp0 + yp3) / 2.0), 2)) / sqrt(L*W) > (cutoff + slip - 1.0)) {
 				coulomb_change = 0.0;
