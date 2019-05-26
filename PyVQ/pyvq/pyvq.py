@@ -63,6 +63,14 @@ try:
 except ImportError:
     netCDF4_available = False
     
+shapely_available = True
+try:
+    import shapely.geometry as spg
+except ImportError:
+    shapely_available = False
+    
+
+    
     
 # ----------------- Global constants -------------------------------------------
 # Kasey: These are only relevent for few-element field plots
@@ -463,7 +471,29 @@ class Geometry:
                         traces_lat_lon[sid] = [(lat,lon)]
                     #break
         return traces_lat_lon
-        
+    
+    def get_section_convexHulls(self):
+        section_hull_coords = {}
+        section_vert_coords = {}
+        ele_ids = self.model.getElementIDs()
+        for eid in ele_ids:
+            sid      = self._elem_to_section_map[eid]
+            vids     = [self.model.element(eid).vertex(i) for i in range(3)]
+            vertices = [self.model.vertex(vid) for vid in vids]
+            for vert in vertices:
+                lon = vert.lld().lon()
+                lat = vert.lld().lat()
+                try:
+                    section_vert_coords[sid].append((lon,lat))
+                except KeyError:
+                    section_vert_coords[sid] = [(lon,lat)]
+
+        for sid, vertcoords in section_vert_coords.iteritems():
+            section_hull_coords[sid] = spg.MultiPoint(vertcoords).convex_hull.exterior.coords
+            
+        return section_hull_coords        
+    
+    
     def get_slip_rates(self, elements):
         # Convert slip rates from meters/second to meters/(decimal year)
         CONVERSION = 3.15576*pow(10,7) 
@@ -1577,6 +1607,7 @@ class FieldPlotter:
         # Set up the points for field evaluation, convert to xyz basis
         self.grid_1d = self.convert.convertArray2xyz(_lats_1d,_lons_1d)
         self.fault_traces_latlon = geometry.get_fault_traces()
+        self.section_convexHulls_latlon = geometry.get_section_convexHulls()
         self._plot_str = ""
         #-----------------------------------------------------------------------
         # Gravity map configuration  #TODO: Put in switches for field_type
@@ -2161,6 +2192,7 @@ class FieldPlotter:
         m4.imshow(map_image, origin='upper')
         
         # If plotting event field, get involved sections
+        
         if self.event_id is not None:
             involved_sections = events[0].get_event_sections(self.event_id, geometry)
             sys.stdout.write(" Event slips on {} sections out of {} : ".format(len(involved_sections), len(geometry.model.getSectionIDs()) ))
@@ -2168,19 +2200,30 @@ class FieldPlotter:
             involved_sections = geometry.model.getSectionIDs()
 
         # print faults on lon-lat plot
-        for sid, sec_trace in self.fault_traces_latlon.iteritems():
-            sec_trace_lons = [lat_lon[1] for lat_lon in sec_trace]
-            sec_trace_lats = [lat_lon[0] for lat_lon in sec_trace]
-            
-            trace_Xs, trace_Ys = m4(sec_trace_lons, sec_trace_lats)
-            
-            if sid in involved_sections:
-                linewidth = fault_width + 2.5
-            else:
-                linewidth = fault_width
+        if self.field_type == 'coulomb':
+            for sid, sec_hull in self.section_convexHulls_latlon.iteritems():                
+                if sid in involved_sections:
+                    linewidth = fault_width + 2.5
+                else:
+                    linewidth = fault_width
+                    
+                this_ax = plt.gca()
+                this_ax.add_patch(mpatches.Polygon(sec_hull, fill=False, color=fault_color, linewidth=linewidth))
+        else:
+            for sid, sec_trace in self.fault_traces_latlon.iteritems():
+                sec_trace_lons = [lat_lon[1] for lat_lon in sec_trace]
+                sec_trace_lats = [lat_lon[0] for lat_lon in sec_trace]
+                
+                trace_Xs, trace_Ys = m4(sec_trace_lons, sec_trace_lats)
+                
+                if sid in involved_sections:
+                    linewidth = fault_width + 2.5
+                else:
+                    linewidth = fault_width
+    
+                m4.plot(trace_Xs, trace_Ys, color=fault_color, linewidth=linewidth, solid_capstyle='round', solid_joinstyle='round')
 
-            m4.plot(trace_Xs, trace_Ys, color=fault_color, linewidth=linewidth, solid_capstyle='round', solid_joinstyle='round')
-
+        
         #plot the cb
         left_frac = 70.0/pw
         bottom_frac = (70.0 - cb_height - cb_margin_t)/ph
